@@ -62,6 +62,11 @@ public:
     u32 FindMemoryType(u32 typeBits, VkMemoryPropertyFlags properties) const;
     static void SetCapabilityOverrides(bool disableTimelineSemaphores, bool disableDynamicTextureIndexing);
 
+    // Requests the vkBasalt post-processing layer (VK_LAYER_VKBASALT_post_processing, packaged in the APK as
+    // libVkLayer_vkBasalt.so) when the next VkInstance is created. The layer is only enabled if the loader
+    // reports it. Has no effect on an already created context.
+    static void SetPostProcessLayerEnabled(bool enabled);
+
 private:
     VulkanContext() = default;
     ~VulkanContext() = default;

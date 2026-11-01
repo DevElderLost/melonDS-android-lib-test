@@ -33,6 +33,8 @@ constexpr const char* kOptionalExternalMemoryExtension = VK_KHR_EXTERNAL_MEMORY_
 constexpr const char* kOptionalAndroidHardwareBufferExtension = VK_ANDROID_EXTERNAL_MEMORY_ANDROID_HARDWARE_BUFFER_EXTENSION_NAME;
 constexpr const char* kOptionalDebugUtilsExtension = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
 constexpr const char* kValidationLayerName = "VK_LAYER_KHRONOS_validation";
+constexpr const char* kPostProcessLayerName = "VK_LAYER_VKBASALT_post_processing";
+std::atomic<bool> gPostProcessLayerEnabled{false};
 std::atomic<bool> gForceDisableTimelineSemaphores{false};
 std::atomic<bool> gForceDisableDynamicTextureIndexing{false};
 
@@ -269,6 +271,28 @@ bool VulkanContext::initializeLocked()
         }
     }
 #endif
+
+    if (gPostProcessLayerEnabled.load(std::memory_order_relaxed))
+    {
+        u32 postProcessLayerCount = 0;
+        bool postProcessLayerFound = false;
+        if (vkEnumerateInstanceLayerProperties(&postProcessLayerCount, nullptr) == VK_SUCCESS && postProcessLayerCount > 0)
+        {
+            std::vector<VkLayerProperties> availableLayers(postProcessLayerCount);
+            if (vkEnumerateInstanceLayerProperties(&postProcessLayerCount, availableLayers.data()) == VK_SUCCESS)
+                postProcessLayerFound = hasLayer(kPostProcessLayerName, availableLayers);
+        }
+
+        if (postProcessLayerFound)
+        {
+            enabledInstanceLayers.push_back(kPostProcessLayerName);
+            Platform::Log(Platform::LogLevel::Info, "VulkanContext: enabling %s", kPostProcessLayerName);
+        }
+        else
+        {
+            Platform::Log(Platform::LogLevel::Warn, "VulkanContext: %s requested but not available (libVkLayer_vkBasalt.so missing from the APK?)", kPostProcessLayerName);
+        }
+    }
 
     VkInstanceCreateInfo instanceCreateInfo{};
     instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -736,6 +760,11 @@ void VulkanContext::SetCapabilityOverrides(bool disableTimelineSemaphores, bool 
 {
     gForceDisableTimelineSemaphores.store(disableTimelineSemaphores, std::memory_order_relaxed);
     gForceDisableDynamicTextureIndexing.store(disableDynamicTextureIndexing, std::memory_order_relaxed);
+}
+
+void VulkanContext::SetPostProcessLayerEnabled(bool enabled)
+{
+    gPostProcessLayerEnabled.store(enabled, std::memory_order_relaxed);
 }
 
 }
